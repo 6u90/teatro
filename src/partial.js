@@ -23,8 +23,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { useDatabase } from "./hooks/useDatabase";
 import { supabase } from "./lib/supabaseClient";
-import { Auth } from "./components/Auth";
-import { useAuth } from "./hooks/useAuth";
 
 // Stili per i pulsanti
 const buttonVariants = {
@@ -49,15 +47,13 @@ function App() {
     updateEvent,
     deleteEvent,
     loadEvents,
-    loadTheaters,
   } = useDatabase();
 
   // Stati per i dialogs
   const [showNewTheaterDialog, setShowNewTheaterDialog] = useState(false);
   const [showNewEventDialog, setShowNewEventDialog] = useState(false);
   const [showSeatDialog, setShowSeatDialog] = useState(false);
-  const [showTheaterManagementDialog, setShowTheaterManagementDialog] =
-    useState(false);
+  const [showTheaterManagementDialog, setShowTheaterManagementDialog] = useState(false);
   const [showEditEventDialog, setShowEditEventDialog] = useState(false);
 
   // Stati per selezioni e dati temporanei
@@ -95,11 +91,7 @@ function App() {
   // Handler per la gestione dei teatri
   const handleCreateTheater = async () => {
     try {
-      if (
-        !newTheater.name ||
-        newTheater.rows <= 0 ||
-        newTheater.seats_per_row <= 0
-      ) {
+      if (!newTheater.name || newTheater.rows <= 0 || newTheater.seats_per_row <= 0) {
         alert("Inserisci tutti i dati del teatro");
         return;
       }
@@ -109,14 +101,9 @@ function App() {
         rows: parseInt(newTheater.rows),
         seats_per_row: parseInt(newTheater.seats_per_row),
       });
-      await loadTheaters();
+
       setShowNewTheaterDialog(false);
-      setNewTheater({
-        name: "",
-        rows: 0,
-        seats_per_row: 0,
-        unavailable_seats: [],
-      });
+      setNewTheater({ name: "", rows: 0, seats_per_row: 0, unavailable_seats: [] });
     } catch (error) {
       alert("Errore durante la creazione del teatro: " + error.message);
     }
@@ -137,8 +124,6 @@ function App() {
         selectedTheater.id,
         newTheater.unavailable_seats
       );
-      await loadTheaters();
-      await loadEvents();
       setShowTheaterManagementDialog(false);
     } catch (error) {
       console.error("Error saving unavailable seats:", error);
@@ -175,11 +160,7 @@ function App() {
 
   const handleSaveEventEdit = async () => {
     try {
-      if (
-        !editingEvent?.name ||
-        !editingEvent?.date ||
-        !editingEvent?.theater_id
-      ) {
+      if (!editingEvent?.name || !editingEvent?.date || !editingEvent?.theater_id) {
         alert("Inserisci tutti i dati dell'evento");
         return;
       }
@@ -229,41 +210,9 @@ function App() {
         checked_in: false,
       });
 
-      // Ricarica i dati
-      await loadEvents();
-
-      // Aggiorna l'evento selezionato con i nuovi dati
-      const updatedEvent = await supabase
-        .from("events")
-        .select(
-          `
-          *,
-          theaters (
-            name,
-            rows,
-            seats_per_row,
-            unavailable_seats
-          ),
-          bookings (
-            id,
-            row_number,
-            seat_number,
-            first_name,
-            last_name,
-            ticket_id,
-            checked_in
-          )
-        `
-        )
-        .eq("id", selectedEvent.id)
-        .single();
-
-      if (updatedEvent.data) {
-        setSelectedEvent(updatedEvent.data);
-      }
-
       setShowSeatDialog(false);
       setBooking({ first_name: "", last_name: "", ticket_id: "" });
+      await loadEvents();
     } catch (error) {
       alert("Errore durante la prenotazione: " + error.message);
     }
@@ -275,8 +224,7 @@ function App() {
       setScanError(null);
       const { data: booking, error } = await supabase
         .from("bookings")
-        .select(
-          `
+        .select(`
           *,
           events (
             name,
@@ -285,8 +233,7 @@ function App() {
               name
             )
           )
-        `
-        )
+        `)
         .eq("ticket_id", qrCode)
         .single();
 
@@ -298,9 +245,7 @@ function App() {
       }
 
       if (booking.checked_in) {
-        setScanError(
-          "Attenzione: questo biglietto è già stato utilizzato per l'accesso!"
-        );
+        setScanError("Attenzione: questo biglietto è già stato utilizzato per l'accesso!");
         return;
       }
 
@@ -308,7 +253,7 @@ function App() {
         ...booking,
         eventName: booking.events.name,
         eventDate: booking.events.date,
-        theaterName: booking.events.theaters.name,
+        theaterName: booking.events.theaters.name
       });
       setIsScanning(false);
     } catch (error) {
@@ -319,7 +264,6 @@ function App() {
   const handleConfirmCheckin = async () => {
     try {
       await updateCheckIn(checkinInfo.id, true);
-      await loadEvents();
       alert("Check-in completato con successo!");
       setCheckinInfo(null);
       setQrCode("");
@@ -330,9 +274,7 @@ function App() {
   };
 
   const handleRejectCheckin = () => {
-    const reason = window.prompt(
-      "Inserisci il motivo del rifiuto (opzionale):"
-    );
+    const reason = window.prompt("Inserisci il motivo del rifiuto (opzionale):");
     if (reason) {
       console.log(`Check-in rifiutato. Motivo: ${reason}`);
     }
@@ -444,7 +386,7 @@ function App() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <Theater className="mr-2 h-4 w-4" />
-                      {event.name}
+                      {event.name} - {event.id}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -588,9 +530,7 @@ function App() {
                         {selectedEvent.bookings?.length > 0 ? (
                           selectedEvent.bookings.map((booking, index) => (
                             <tr key={index} className="border-b">
-                              <td className="px-4 py-2">
-                                {booking.first_name}
-                              </td>
+                              <td className="px-4 py-2">{booking.first_name}</td>
                               <td className="px-4 py-2">{booking.last_name}</td>
                               <td className="px-4 py-2">
                                 Fila {booking.row_number}, Posto{" "}
@@ -604,9 +544,7 @@ function App() {
                                     Check-in effettuato
                                   </span>
                                 ) : (
-                                  <span className="text-gray-500">
-                                    In attesa
-                                  </span>
+                                  <span className="text-gray-500">In attesa</span>
                                 )}
                               </td>
                             </tr>
@@ -733,364 +671,4 @@ function App() {
 
                 {checkinInfo && (
                   <Card>
-                    <CardContent className="mt-4">
-                      <h3 className="text-lg font-bold mb-4">
-                        Informazioni Biglietto:
-                      </h3>
-                      <div className="space-y-2 mb-6">
-                        <p>
-                          <span className="font-medium">Nome:</span>{" "}
-                          {checkinInfo.first_name}
-                        </p>
-                        <p>
-                          <span className="font-medium">Cognome:</span>{" "}
-                          {checkinInfo.last_name}
-                        </p>
-                        <p>
-                          <span className="font-medium">Evento:</span>{" "}
-                          {checkinInfo.eventName}
-                        </p>
-                        <p>
-                          <span className="font-medium">Teatro:</span>{" "}
-                          {checkinInfo.theaterName}
-                        </p>
-                        <p>
-                          <span className="font-medium">Data:</span>{" "}
-                          {new Date(checkinInfo.eventDate).toLocaleDateString()}
-                        </p>
-                        <p>
-                          <span className="font-medium">Posto:</span> Fila{" "}
-                          {checkinInfo.row_number}, Posto{" "}
-                          {checkinInfo.seat_number}
-                        </p>
-                        <p>
-                          <span className="font-medium">Codice Biglietto:</span>{" "}
-                          {checkinInfo.ticket_id}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          className={`flex-1 ${buttonVariants.destructive}`}
-                          onClick={handleRejectCheckin}
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Rifiuta Accesso
-                        </Button>
-                        <Button
-                          className={`flex-1 ${buttonVariants.primary}`}
-                          onClick={handleConfirmCheckin}
-                        >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Conferma Check-in
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialog Nuovo Teatro */}
-      <Dialog
-        open={showNewTheaterDialog}
-        onOpenChange={setShowNewTheaterDialog}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nuovo Teatro</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome Teatro</Label>
-              <Input
-                value={newTheater.name}
-                onChange={(e) =>
-                  setNewTheater({ ...newTheater, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Numero File</Label>
-              <Input
-                type="number"
-                value={newTheater.rows}
-                onChange={(e) =>
-                  setNewTheater({
-                    ...newTheater,
-                    rows: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label>Posti per Fila</Label>
-              <Input
-                type="number"
-                value={newTheater.seats_per_row}
-                onChange={(e) =>
-                  setNewTheater({
-                    ...newTheater,
-                    seats_per_row: parseInt(e.target.value) || 0,
-                  })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleCreateTheater}
-              className={buttonVariants.primary}
-            >
-              Crea Teatro
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Nuovo Evento */}
-      <Dialog open={showNewEventDialog} onOpenChange={setShowNewEventDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nuovo Evento</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome Evento</Label>
-              <Input
-                value={newEvent.name}
-                onChange={(e) =>
-                  setNewEvent({ ...newEvent, name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Data</Label>
-              <Input
-                type="date"
-                value={newEvent.date}
-                onChange={(e) =>
-                  setNewEvent({ ...newEvent, date: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Teatro</Label>
-              <select
-                className="w-full p-2 pr-8 border rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={newEvent.theater_id}
-                onChange={(e) =>
-                  setNewEvent({ ...newEvent, theater_id: e.target.value })
-                }
-              >
-                <option value="">Seleziona un teatro</option>
-                {theaters.map((theater) => (
-                  <option key={theater.id} value={theater.id}>
-                    {theater.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleCreateEvent}
-              className={buttonVariants.primary}
-            >
-              Crea Evento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Modifica Evento */}
-      <Dialog open={showEditEventDialog} onOpenChange={setShowEditEventDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifica Evento</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome Evento</Label>
-              <Input
-                value={editingEvent?.name || ""}
-                onChange={(e) =>
-                  setEditingEvent((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Data</Label>
-              <Input
-                type="date"
-                value={editingEvent?.date || ""}
-                onChange={(e) =>
-                  setEditingEvent((prev) => ({
-                    ...prev,
-                    date: e.target.value,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Teatro</Label>
-              <select
-                className="w-full p-2 pr-8 border rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={editingEvent?.theater_id || ""}
-                onChange={(e) =>
-                  setEditingEvent((prev) => ({
-                    ...prev,
-                    theater_id: e.target.value,
-                  }))
-                }
-              >
-                <option value="">Seleziona un teatro</option>
-                {theaters.map((theater) => (
-                  <option key={theater.id} value={theater.id}>
-                    {theater.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleSaveEventEdit}
-              className={buttonVariants.primary}
-            >
-              Salva Modifiche
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Prenotazione Posto */}
-      <Dialog open={showSeatDialog} onOpenChange={setShowSeatDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Prenota Posto</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nome</Label>
-              <Input
-                value={booking.first_name}
-                onChange={(e) =>
-                  setBooking({ ...booking, first_name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Cognome</Label>
-              <Input
-                value={booking.last_name}
-                onChange={(e) =>
-                  setBooking({ ...booking, last_name: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Codice Biglietto Cartaceo</Label>
-              <Input
-                value={booking.ticket_id}
-                onChange={(e) =>
-                  setBooking({ ...booking, ticket_id: e.target.value })
-                }
-                placeholder="Inserisci il codice del biglietto cartaceo"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleBookSeat} className={buttonVariants.primary}>
-              Conferma Prenotazione
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Gestione Posti Teatro */}
-      <Dialog
-        open={showTheaterManagementDialog}
-        onOpenChange={setShowTheaterManagementDialog}
-      >
-        <DialogContent className="max-w-[90vw] w-auto max-h-[90vh]">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Gestione Teatro: {selectedTheater?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 overflow-x-auto overflow-y-auto flex-grow">
-            <div>
-              <Label className="sticky top-0 bg-white py-2">
-                Posti Inesistenti
-              </Label>
-              <div
-                className="mt-4 h-full"
-                style={{ maxHeight: "calc(80vh - 200px)" }}
-              >
-                {Array.from({ length: selectedTheater?.rows || 0 }).map(
-                  (_, rowIndex) => (
-                    <div
-                      key={rowIndex}
-                      className="flex gap-2 items-center mb-2 whitespace-nowrap"
-                    >
-                      <span className="w-16 flex-shrink-0">
-                        Fila {rowIndex + 1}
-                      </span>
-                      <div className="flex gap-1 flex-nowrap">
-                        {Array.from({
-                          length: selectedTheater?.seats_per_row || 0,
-                        }).map((_, seatIndex) => {
-                          const seatId = `${rowIndex + 1}-${seatIndex + 1}`;
-                          const isUnavailable =
-                            newTheater.unavailable_seats.includes(seatId);
-
-                          return (
-                            <button
-                              key={seatId}
-                              className={`w-8 h-8 rounded flex-shrink-0 flex items-center justify-center ${
-                                isUnavailable
-                                  ? "bg-gray-500 text-white"
-                                  : "bg-green-500 hover:bg-green-600 text-white"
-                              }`}
-                              onClick={() => {
-                                setNewTheater((prev) => ({
-                                  ...prev,
-                                  unavailable_seats: isUnavailable
-                                    ? prev.unavailable_seats.filter(
-                                        (id) => id !== seatId
-                                      )
-                                    : [...prev.unavailable_seats, seatId],
-                                }));
-                              }}
-                            >
-                              <Armchair className="w-6 h-6" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="flex-shrink-0">
-            <Button
-              onClick={handleSaveUnavailableSeats}
-              className={buttonVariants.primary}
-            >
-              Salva Modifiche
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-export default App;
+                    <CardContent className="mt-
